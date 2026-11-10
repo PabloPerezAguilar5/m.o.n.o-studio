@@ -8,7 +8,7 @@ global        = ( "bpm" number | "scale" identifier | "seed" number ) end ;
 track         = "track" identifier "{" { blank | statement } "}" end ;
 statement     = instrument | drum | notes | pattern | arp | rate | parameter ;
 instrument    = ( "kit" | "synth" ) string end ;
-drum          = ( "kick" | "snare" | "hat" ) rhythm end ;
+drum          = identifier rhythm end ;
 rhythm        = string | generator ;
 generator     = identifier "(" number { "," number } ")"
                 [ "every" number ( "bar" | "bars" ) ] ;
@@ -29,3 +29,11 @@ Espacios y tabulaciones se ignoran fuera de cadenas. `//` inicia un comentario h
 Las restricciones musicales se comprueban después del análisis sintáctico: notas de la escala, presets, exclusión kit/synth, parámetros, nombres únicos, longitudes de patrón, aridad y rangos de generadores. El AST conserva ubicaciones de origen y la representación intermedia contiene solamente valores musicales validados.
 
 `parse(source)` devuelve `{ ast, diagnostics }`. `validate(ast, options)` devuelve `{ composition?, diagnostics }`. `compile(source, options)` aplica ambas etapas y el límite de tamaño. No devuelve una composición si hay errores. El parser recupera errores en límites de línea o llaves para señalar varios problemas sin bloquearse.
+
+Dentro de `track`, `mute` y `solo` admiten `true` o `false`:
+
+```ebnf
+track_flag = ( "mute" | "solo" ) ( "true" | "false" ) end ;
+```
+
+Si se omiten, ambos valores son `false`.

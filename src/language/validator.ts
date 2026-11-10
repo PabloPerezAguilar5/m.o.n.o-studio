@@ -1,4 +1,4 @@
-import { DEFAULT_PARAMS, LANGUAGE_VERSION, type Composition, type Diagnostic, type DrumName, type GeneratorName, type PatternSpec, type Track } from '../core/types';
+import { DEFAULT_PARAMS, LANGUAGE_VERSION, type Composition, type Diagnostic, type GeneratorName, type PatternSpec, type Track } from '../core/types';
 import type { ProgramNode, SourceLocation, StatementNode } from './ast';
 
 export interface GeneratorRule {
@@ -78,6 +78,7 @@ export function validate(ast: ProgramNode, options: ValidationOptions = {}): { c
     if (synth && !['sub', 'analog', 'fm', 'pad'].includes(String(synth.value))) report(synth.valueLocation, 'Preset desconocido. Usa sub, analog, fm o pad.');
     const track: Track = {
       id: node.name, kind: kit ? 'drums' : 'synth', instrument: String((kit ?? synth)?.value ?? ''),
+      mute: statements.get('mute')?.value === true, solo: statements.get('solo')?.value === true,
       drums: {}, notes: [], arp: 'up', rate: 8, params: { ...DEFAULT_PARAMS },
     };
     for (const key of ['volume', 'cutoff', 'resonance', 'delay', 'reverb'] as const) {
@@ -88,9 +89,9 @@ export function validate(ast: ProgramNode, options: ValidationOptions = {}): { c
       if (!Number.isFinite(value) || value < min || value > max) report(statement.valueLocation, `${key} debe estar entre ${min} y ${max}.`);
       else track.params[key] = value;
     }
-    for (const drum of ['kick', 'snare', 'hat'] as DrumName[]) {
-      const statement = statements.get(drum);
-      if (!statement) continue;
+    const reserved = new Set(['kit', 'synth', 'volume', 'cutoff', 'resonance', 'delay', 'reverb', 'notes', 'pattern', 'arp', 'rate', 'mute', 'solo']);
+    for (const [drum, statement] of statements) {
+      if (reserved.has(drum)) continue;
       if (!kit) report(statement.location, `"${drum}" solo se admite en pistas con kit.`);
       const spec = statement.value as PatternSpec;
       if (spec.type === 'literal') {
@@ -107,7 +108,7 @@ export function validate(ast: ProgramNode, options: ValidationOptions = {}): { c
       }
       track.drums[drum] = spec;
     }
-    if (kit && !Object.keys(track.drums).length) report(node.location, 'Una pista de batería necesita al menos un patrón kick, snare o hat.');
+    if (kit && !Object.keys(track.drums).length) report(node.location, 'Una pista de batería necesita al menos un patrón de instrumento.');
     for (const name of ['notes', 'pattern', 'arp', 'rate']) {
       const statement = statements.get(name);
       if (kit && statement) report(statement.location, `"${name}" solo se admite en pistas con synth.`);

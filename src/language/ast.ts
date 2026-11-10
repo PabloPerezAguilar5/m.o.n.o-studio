@@ -10,7 +10,7 @@ export interface GlobalNode {
 export interface StatementNode {
   type: 'Statement';
   name: string;
-  value: string | number | string[] | PatternSpec;
+  value: string | number | boolean | string[] | PatternSpec;
   location: SourceLocation;
   valueLocation: SourceLocation;
 }

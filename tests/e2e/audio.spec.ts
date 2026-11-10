@@ -27,7 +27,7 @@ async function prepare(page: Page, source: string): Promise<void> {
     button.id = 'audio-test-play';
     button.textContent = 'Start test audio';
     button.style.cssText = 'position:fixed;top:0;left:0;z-index:999999;padding:16px';
-    button.onclick = () => { void engine.play().catch(error => { window.audioHarness.playError = String(error); }); };
+    button.onclick = () => { void engine.play().catch((error: unknown) => { window.audioHarness.playError = String(error); }); };
     document.body.append(button);
   }, { source, audio: '/src/audio/index.ts', core: '/src/core/index.ts', language: '/src/language/index.ts' });
   await page.locator('#audio-test-play').click();
@@ -84,6 +84,7 @@ test('live updates preserve transport, rejected code and missing samples preserv
   expect(invalid.errors).toBeGreaterThan(0);
   expect(invalid.hasComposition).toBe(false);
   expect(invalid.tracks).toBe(2);
+  await page.route('**/samples/drums/trip/kick.wav', route => route.fulfill({ status: 404, body: 'missing' }));
   const failed = await page.evaluate(async source => {
     const { engine, compile } = window.audioHarness;
     try { await engine.submit(compile(source).composition!); return ''; } catch (error) { return String(error); }
@@ -107,10 +108,26 @@ test('real WAV decoding plays sample drums and permits new lanes without replace
   const source = 'bpm 240\nscale D_minor\nseed 12\ntrack drums {\n kit "trip"\n kick "x...x...x...x..."\n cutoff 16000\n reverb 0\n}';
   await prepare(page, source);
   await expect.poll(() => peak(page)).toBeGreaterThan(0.001);
-  expect(requests).toHaveLength(3);
+  expect(requests).toHaveLength(8);
   const changed = source.replace('kick "x...x...x...x..."', 'hat euclid(8,16) every 1 bar\n snare human(0.5)');
   await page.evaluate(async code => { const { engine, compile } = window.audioHarness; await engine.submit(compile(code).composition!); }, changed);
   await expect.poll(() => page.evaluate(() => Object.keys(window.audioHarness.engine.getSnapshot().composition!.tracks[0].drums).join(','))).toBe('hat,snare');
   await expect.poll(() => peak(page)).toBeGreaterThan(0.001);
-  expect(requests).toHaveLength(3);
+  expect(requests).toHaveLength(8);
+});
+
+test('all registered kits decode their real WAV files and switch during playback', async ({ page }) => {
+  const source = (kit: string, instrument: string) => `bpm 240\ntrack drums {\n kit "${kit}"\n ${instrument} "xxxxxxxxxxxxxxxx"\n}`;
+  await prepare(page, source('trip', 'rim'));
+  for (const [kit, instrument] of [['909samples', 'crash'], ['samples808', 'conga'], ['freaksamples', 'woodblock'], ['glitch', 'perc']]) {
+    await page.evaluate(async code => {
+      const { engine, compile } = window.audioHarness;
+      const result = compile(code);
+      if (!result.composition) throw new Error(JSON.stringify(result.diagnostics));
+      await engine.submit(result.composition);
+    }, source(kit, instrument));
+    await expect.poll(() => page.evaluate(() => window.audioHarness.engine.getSnapshot().composition?.tracks[0]?.instrument)).toBe(kit);
+    expect(await page.evaluate(() => window.audioHarness.engine.getSnapshot().playing)).toBe(true);
+    await expect.poll(() => peak(page)).toBeGreaterThan(0.00001);
+  }
 });

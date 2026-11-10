@@ -1,11 +1,154 @@
 {
   "version": 1,
   "kits": [
-    { "id": "trip", "name": "Trip · archivos locales", "instruments": {
-      "kick": ["drums/trip/kick.wav"], "snare": ["drums/trip/snare.wav"], "hat": ["drums/trip/hat.wav"]
-    } },
-    { "id": "glitch", "name": "Glitch · archivos locales", "instruments": {
-      "kick": ["drums/glitch/kick.wav"], "snare": ["drums/glitch/snare.wav"], "hat": ["drums/glitch/hat.wav"]
-    } }
+    {
+      "id": "909samples",
+      "name": "909samples",
+      "instruments": {
+        "clap": [
+          "drums/909samples/A01_909 clap.wav"
+        ],
+        "crash": [
+          "drums/909samples/A02_909 crash.wav"
+        ],
+        "hat": [
+          "drums/909samples/A03_909 hat 2.wav",
+          "drums/909samples/A04_909 hat 3.wav",
+          "drums/909samples/A05_909 hat.wav"
+        ],
+        "tom": [
+          "drums/909samples/A06_909 hi tom.wav",
+          "drums/909samples/A10_909 mid tom.wav"
+        ],
+        "kick": [
+          "drums/909samples/A07_909 kick 1.wav",
+          "drums/909samples/A08_909 kick 2.wav",
+          "drums/909samples/A09_909 kick.wav"
+        ],
+        "open_hat": [
+          "drums/909samples/A11_909 open hat.wav"
+        ],
+        "ride": [
+          "drums/909samples/A12_909 ride.wav"
+        ],
+        "snare": [
+          "drums/909samples/A13_909 snare long.wav",
+          "drums/909samples/A14_909 snare low.wav",
+          "drums/909samples/A15_909 snare.wav"
+        ]
+      }
+    },
+    {
+      "id": "freaksamples",
+      "name": "freaksamples",
+      "instruments": {
+        "kick": [
+          "drums/freaksamples/A01_kick-gnarl-5.wav",
+          "drums/freaksamples/A02_fm-kick-1.wav",
+          "drums/freaksamples/A03_fm-kick-5.wav",
+          "drums/freaksamples/A04_fm-kick-6.wav"
+        ],
+        "snare": [
+          "drums/freaksamples/A05_snare-spring.wav",
+          "drums/freaksamples/A06_snare-elektro-2.wav",
+          "drums/freaksamples/A07_snare-fm-3.wav",
+          "drums/freaksamples/A08_snare-love.wav"
+        ],
+        "hat": [
+          "drums/freaksamples/A09_fm-hat-2.wav",
+          "drums/freaksamples/A10_fm-hat-9.wav",
+          "drums/freaksamples/A11_hat-close.wav",
+          "drums/freaksamples/A12_hat-elektro-1.wav",
+          "drums/freaksamples/A13_hat-elektro-3.wav",
+          "drums/freaksamples/A14_hat-elektro-4.wav"
+        ],
+        "perc": [
+          "drums/freaksamples/A15_perc-fm-3.wav"
+        ],
+        "woodblock": [
+          "drums/freaksamples/A16_wood-block-hi-spring.wav"
+        ]
+      }
+    },
+    {
+      "id": "glitch",
+      "name": "glitch",
+      "instruments": {
+        "hat": [
+          "drums/glitch/hat.wav"
+        ],
+        "kick": [
+          "drums/glitch/kick.wav"
+        ],
+        "perc": [
+          "drums/glitch/perc.wav"
+        ],
+        "snare": [
+          "drums/glitch/snare.wav"
+        ]
+      }
+    },
+    {
+      "id": "samples808",
+      "name": "samples808",
+      "instruments": {
+        "clap": [
+          "drums/samples808/A01_808 clap.wav"
+        ],
+        "conga": [
+          "drums/samples808/A02_808 conga hi.wav"
+        ],
+        "open_hat": [
+          "drums/samples808/A03_808 hat open.wav"
+        ],
+        "hat": [
+          "drums/samples808/A04_808 hat.wav"
+        ],
+        "kick": [
+          "drums/samples808/A05_808 kick long.wav",
+          "drums/samples808/A06_808 kick short.wav"
+        ],
+        "ride": [
+          "drums/samples808/A07_808 ride.wav"
+        ],
+        "snare": [
+          "drums/samples808/A08_808 snare grain.wav",
+          "drums/samples808/A09_808 snare.wav"
+        ],
+        "tom": [
+          "drums/samples808/A10_808 tom hi.wav"
+        ],
+        "rim": [
+          "drums/samples808/A12_808 rimshot.wav"
+        ],
+        "woodblock": [
+          "drums/samples808/A13_808 woodblock.wav"
+        ]
+      }
+    },
+    {
+      "id": "trip",
+      "name": "trip",
+      "instruments": {
+        "hat": [
+          "drums/trip/hat.wav",
+          "drums/trip/A03_09 Hihat#2.wav"
+        ],
+        "kick": [
+          "drums/trip/kick.wav",
+          "drums/trip/A01_06 Kick#2.wav"
+        ],
+        "perc": [
+          "drums/trip/perc.wav"
+        ],
+        "snare": [
+          "drums/trip/snare.wav",
+          "drums/trip/A02_07 Snare#2.wav"
+        ],
+        "rim": [
+          "drums/trip/A04_13 Rimshot.wav"
+        ]
+      }
+    }
   ]
 }

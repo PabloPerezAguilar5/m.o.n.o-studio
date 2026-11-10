@@ -35,22 +35,9 @@ Guardar conserva código, nombre, versión del lenguaje, volumen maestro y refer
 
 ## Añadir batería real
 
-**No se incluyen archivos WAV.** El manifiesto registra los kits `trip` y `glitch`, pero cada kit estará disponible únicamente cuando existan y se decodifiquen sus archivos. No hay batería sintetizada de sustitución ni descarga de sonidos.
+Los cinco kits locales son `909samples`, `freaksamples`, `glitch`, `samples808` y `trip`. La guía del editor muestra los instrumentos de cada uno. El motor carga y decodifica el kit completo antes de aceptarlo; cualquier archivo ausente o inválido conserva la composición activa.
 
-Añade tus grabaciones a estas rutas:
-
-```text
-public/samples/drums/trip/kick.wav
-public/samples/drums/trip/snare.wav
-public/samples/drums/trip/hat.wav
-public/samples/drums/glitch/kick.wav
-public/samples/drums/glitch/snare.wav
-public/samples/drums/glitch/hat.wav
-```
-
-Puedes empezar con un solo kit completo. Después abre **Euclidean transmission** para `trip` o **Broken machinery** para `glitch`. El motor carga el kit completo antes de aceptar una pista. Un archivo ausente o inválido produce un mensaje con su ruta y conserva la composición activa.
-
-Para registrar otro kit, edita [`public/samples/kits.json`](public/samples/kits.json) y utiliza su `id` en `kit "mi_kit"`. Cada instrumento tiene una lista de rutas relativas a `public/samples/`. En v0.1 usa una muestra por instrumento para resultados uniformes. La estructura admite ampliar instrumentos y variaciones. Consulta [las instrucciones de samples](public/samples/README.md).
+Para registrar nuevos WAV o carpetas, ejecuta `node scripts/register-kits.mjs`. El manifiesto conserva las rutas originales y agrupa variantes por instrumento. Consulta [las instrucciones de samples](public/samples/README.md).
 
 ## Alcance de la versión
 

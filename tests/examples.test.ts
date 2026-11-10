@@ -17,11 +17,11 @@ describe('compositions shipped in the studio', () => {
     expect(result.composition?.version).toBe('0.1');
   });
 
-  it('marks every sample-dependent example as requiring a kit', () => {
+  it('identifies the kit used by every sample-dependent example', () => {
     for (const example of EXAMPLES) {
       const drums = compile(example.code).composition?.tracks.filter((track) => track.kind === 'drums') ?? [];
       if (drums.length) {
-        expect(example.tag).toContain('REQUIERE KIT');
+        expect(example.tag).toContain('KIT');
         for (const track of drums) expect(example.tag).toContain(track.instrument.toUpperCase());
       }
     }

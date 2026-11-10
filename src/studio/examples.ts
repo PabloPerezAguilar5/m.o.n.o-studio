@@ -37,8 +37,7 @@ track atmosphere {
 
 export const EXAMPLES = [
   { name: 'Afterhours', tag: 'SÍNTESIS · LISTO PARA TOCAR', code: INITIAL_CODE },
-  { name: 'Euclidean transmission', tag: 'SAMPLES · REQUIERE KIT TRIP', code: `// Añade kick.wav, snare.wav y hat.wav a:
-// public/samples/drums/trip/
+  { name: 'Euclidean transmission', tag: 'SAMPLES · KIT TRIP', code: `// Kit trip incluido en el catálogo local.
 bpm 112
 scale D_minor
 seed 808
@@ -59,7 +58,7 @@ track bass {
     volume 0.65
 }
 ` },
-  { name: 'Broken machinery', tag: 'SAMPLES · REQUIERE KIT GLITCH', code: `bpm 132
+  { name: 'Broken machinery', tag: 'SAMPLES · KIT GLITCH', code: `bpm 132
 scale A_minor
 seed 909
 
@@ -82,4 +81,13 @@ track wire {
     volume 0.3
 }
 ` },
+  ...['909samples', 'samples808', 'freaksamples'].map(kit => ({ name: kit, tag: `SAMPLES · KIT ${kit.toUpperCase()}`, code: `bpm 120
+track drums {
+    kit "${kit}"
+    kick "x...x...x...x..."
+    snare riot(0.5) every 4 bars
+    hat euclid(7,16)
+    ${kit === 'freaksamples' ? 'perc' : 'clap'} random(0.3) every 2 bars
+}
+` })),
 ];

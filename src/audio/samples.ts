@@ -15,15 +15,15 @@ export function parseKitManifest(value: unknown): KitManifest {
   const kits = value.kits.map((entry: unknown): KitDefinition => {
     if (!entry || typeof entry !== 'object') throw new Error('Definición de kit inválida.');
     const kit = entry as Record<string, unknown>;
-    if (typeof kit.id !== 'string' || !/^[a-zA-Z_][\w-]*$/.test(kit.id) || ids.has(kit.id)) {
+    if (typeof kit.id !== 'string' || !/^[a-zA-Z0-9_][\w-]*$/.test(kit.id) || ids.has(kit.id)) {
       throw new Error('Cada kit debe tener un id válido y único.');
     }
     ids.add(kit.id);
     if (!kit.instruments || typeof kit.instruments !== 'object' || Array.isArray(kit.instruments)) throw new Error(`Kit ${kit.id}: falta instruments.`);
     const instruments: Record<string, string[]> = Object.create(null) as Record<string, string[]>;
     for (const [name, files] of Object.entries(kit.instruments)) {
-      if (!/^[a-zA-Z_]\w*$/.test(name) || !Array.isArray(files) || files.length === 0 || files.length > 8) throw new Error(`Kit ${kit.id}: lista de samples inválida para ${name}.`);
-      if (!files.every((file: unknown) => typeof file === 'string' && /^(?:[\w-]+\/)*[\w.-]+\.(wav|mp3|ogg|flac)$/i.test(file) && !file.includes('..'))) {
+      if (!/^[a-zA-Z_]\w*$/.test(name) || !Array.isArray(files) || files.length === 0 || files.length > 128) throw new Error(`Kit ${kit.id}: lista de samples inválida para ${name}.`);
+      if (!files.every((file: unknown) => typeof file === 'string' && !file.startsWith('/') && !file.includes('\\') && file.split('/').every((part: string) => part !== '..' && part !== '.' && part.length > 0) && /\.(wav|mp3|ogg|flac)$/i.test(file))) {
         throw new Error(`Kit ${kit.id}: las rutas deben ser archivos locales dentro de samples/.`);
       }
       instruments[name] = [...files] as string[];
@@ -45,7 +45,7 @@ export class SampleLibrary {
   constructor(
     private readonly decode: (data: ArrayBuffer) => Promise<AudioBuffer>,
     private readonly base = `${import.meta.env.BASE_URL}samples/`,
-    private readonly fetcher: typeof fetch = fetch,
+    private readonly fetcher: typeof fetch = (...args) => globalThis.fetch(...args),
   ) {}
 
   async getManifest(): Promise<KitManifest> {
@@ -86,7 +86,7 @@ export class SampleLibrary {
       result[instrument] = [];
       for (const path of paths) {
         if (this.disposed) throw new Error('Biblioteca de samples cerrada.');
-        const url = `${this.base}${path}`;
+        const url = `${this.base}${path.split('/').map(encodeURIComponent).join('/')}`;
         try {
           const response = await this.fetcher(url, { signal: this.abort.signal, cache: 'no-cache' });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -117,3 +117,4 @@ export class SampleLibrary {
     this.manifest = undefined;
   }
 }
+

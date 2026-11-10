@@ -34,7 +34,7 @@ Con la reproducción en marcha, cambia `cutoff 600` a `cutoff 1800` y pulsa Ctrl
 
 ## Samples y generadores
 
-Antes de ejecutar este ejemplo, incorpora tus archivos `kick.wav`, `snare.wav` y `hat.wav` a `public/samples/drums/trip/`. Los WAV no vienen incluidos.
+El kit local `trip` está registrado en el catálogo de samples.
 
 ```mono
 bpm 112

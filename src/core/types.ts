@@ -1,5 +1,5 @@
 export const LANGUAGE_VERSION = '0.1' as const;
-export type DrumName = 'kick' | 'snare' | 'hat';
+export type DrumName = string;
 export type GeneratorName = 'random' | 'riot' | 'evolve' | 'minimal' | 'dense' | 'human' | 'glitch' | 'euclid';
 export type PatternSpec = { type: 'literal'; value: string } | { type: 'generator'; name: GeneratorName; args: number[]; every?: number };
 export interface TrackParams { volume: number; cutoff: number; resonance: number; delay: number; reverb: number }
@@ -8,7 +8,9 @@ export interface Track {
   id: string;
   kind: 'drums' | 'synth';
   instrument: string;
-  drums: Partial<Record<DrumName, PatternSpec>>;
+  mute?: boolean;
+  solo?: boolean;
+  drums: Record<DrumName, PatternSpec>;
   notes: string[];
   pattern?: string;
   arp: 'up' | 'down' | 'updown' | 'random';
@@ -19,6 +21,7 @@ export interface Composition { version: typeof LANGUAGE_VERSION; bpm: number; sc
 export interface Diagnostic { line: number; column: number; length: number; message: string; severity: 'error' | 'warning' }
 export interface MusicalEvent { trackId: string; instrument?: DrumName; note?: string; velocity: number; offset: number; duration: number }
 export interface TrackVoice {
+  validateTrack?(track: Track): void;
   updateParams(params: TrackParams, time?: number): void;
   trigger(event: MusicalEvent, time: number): void;
   setMuted(muted: boolean): void;

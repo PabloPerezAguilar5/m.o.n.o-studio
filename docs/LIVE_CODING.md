@@ -30,3 +30,9 @@ Cambiar solo cutoff, volumen, resonancia, delay o reverb no crea otra voz. Cambi
 STOP cancela el reloj, reinicia la posición, descarta los cambios estructurales pendientes y libera todas las voces. Conserva la última composición activa. PLAY reconstruye sus voces cuando es necesario y comienza desde el principio con la misma semilla. El adaptador requiere interacción explícita para abrir el audio. Cerrar el motor libera también el bus maestro y sus efectos.
 
 La unidad `LiveEngine` no ejecuta código del usuario ni depende de Tone.js. Otro backend, incluido uno MIDI, puede implementar el mismo contrato. El backend debe respetar el tiempo de los eventos y realizar disposiciones diferidas cuando recibe un tiempo de límite de compás; las llamadas a `dispose` deben ser idempotentes.
+
+## Mute y solo en directo
+
+Edita `mute true` o `solo true` dentro de una pista y pulsa Ctrl + Enter. Los cambios de audibilidad se aplican inmediatamente con una transición breve, sin reiniciar el transporte ni la fase de los patrones. Varias pistas pueden tener solo; mute tiene prioridad. Los botones M y S cambian la instrucción correspondiente del editor y la audibilidad activa, sin aplicar otros cambios pendientes del texto. Si además se cambia una estructura, esta espera al siguiente compás después de prepararse.
+
+La biblioteca lateral inserta o reemplaza únicamente una instrucción del editor. Para escucharla, aplica el código con Ctrl + Enter.

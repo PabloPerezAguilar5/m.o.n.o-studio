@@ -43,7 +43,7 @@ La métrica es 4/4. Las escalas menores son naturales. `Bb_major` y `F#_minor` s
 
 Cada pista declara exactamente un instrumento: `kit "nombre"` o `synth "preset"`. Los presets son `sub`, `analog`, `fm` y `pad`. El nombre de kit es un identificador local, con letras, números, `_` o `-`; el motor de audio comprueba el manifiesto y los archivos antes de activarlo. Compilar el nombre de un kit no significa que sus samples existan.
 
-Las pistas de batería necesitan al menos un patrón `kick`, `snare` o `hat`. Las pistas de sintetizador necesitan `notes` con entre 1 y 128 notas. `kit` no admite `notes`, `pattern`, `arp` ni `rate`; `synth` no admite líneas de batería.
+Las pistas de batería necesitan al menos un patrón para cualquier instrumento del kit. Consulta el catálogo en la guía de la aplicación o en `public/samples/kits.json`. Todos admiten patrones y generadores. Las pistas de sintetizador necesitan `notes` con entre 1 y 128 notas. `kit` no admite `notes`, `pattern`, `arp` ni `rate`; `synth` no admite líneas de batería.
 
 ```mono
 track drums {
@@ -87,3 +87,23 @@ Sin `every`, el resultado se genera una vez y se repite. `every N bar` y `every 
 El compilador admite hasta 200 000 caracteres, 64 pistas y nombres de hasta 64 caracteres. Una composición sin pistas es válida: permite retirar todas las pistas durante la ejecución. Se devuelven hasta 100 diagnósticos por etapa para mantener una respuesta acotada.
 
 La API `compile(source, { generators })` acepta reglas de validación adicionales con `{ arity, validate(args) }`; el registro de generadores del núcleo debe contener el algoritmo correspondiente. Agregar una función generativa no requiere cambiar el lexer ni el parser.
+
+## Mute y solo por pista
+
+Dentro de cualquier `track`, escribe `mute true` o `mute false`, y `solo true` o `solo false`. Ambos valores son `false` cuando se omiten. Puede haber varios solos: se oyen las pistas con `solo true` siempre que no tengan `mute true`. Mute tiene prioridad. Los botones M y S actualizan estas mismas instrucciones en el editor y el estado activo; Ctrl + Enter aplica cambios escritos a mano.
+
+```mono
+track drums {
+  kit "909samples"
+  mute false
+  solo true
+  kick "x...x...x...x..."
+  snare "....x.......x..."
+}
+```
+
+## Biblioteca y autocompletado de patrones
+
+Abre **PATTERN LIBRARY** desde la barra lateral. Filtra por estilo o instrumento, inserta una instrucción en el cursor o copia el texto. Si el cursor está en una línea de patrón, se sustituye solo esa instrucción. Guarda patrones propios de 16 pasos en IndexedDB; permanecen en este navegador. La inserción edita el texto y no aplica la composición: usa Ctrl + Enter.
+
+Al escribir una línea como `snare "....x`, Monaco propone patrones compatibles. Acepta uno con Tab; se conservan los pasos escritos y se completa la comilla. La biblioteca y el catálogo de sugerencias son independientes del motor de audio.

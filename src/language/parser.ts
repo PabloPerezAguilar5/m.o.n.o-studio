@@ -3,7 +3,6 @@ import type { GlobalNode, ProgramNode, StatementNode, TrackNode } from './ast';
 import { lex, type Token, type TokenKind } from './lexer';
 
 const numericStatements = new Set(['volume', 'cutoff', 'resonance', 'delay', 'reverb']);
-const drums = new Set(['kick', 'snare', 'hat']);
 class ParseError extends Error {}
 
 export interface ParseResult { ast: ProgramNode; diagnostics: Diagnostic[] }
@@ -46,6 +45,11 @@ export function parse(source: string): ParseResult {
     let value: StatementNode['value'];
     if (numericStatements.has(name.text)) value = number();
     else if (name.text === 'kit' || name.text === 'synth' || name.text === 'pattern') value = expect('string', `"${name.text}" necesita una cadena entre comillas dobles.`).text;
+    else if (name.text === 'mute' || name.text === 'solo') {
+      const token = identifier();
+      if (token.text !== 'true' && token.text !== 'false') report(token, `${name.text} admite true o false.`);
+      value = token.text === 'true';
+    }
     else if (name.text === 'arp') value = identifier().text;
     else if (name.text === 'rate') {
       const numerator = number();
@@ -57,8 +61,7 @@ export function parse(source: string): ParseResult {
       while (current().kind === 'identifier') notes.push(take().text);
       if (!notes.length) report(current(), 'Declara al menos una nota, por ejemplo D2 F2 A2.');
       value = notes;
-    } else if (drums.has(name.text)) value = pattern();
-    else report(name, `Instrucción desconocida: "${name.text}".`);
+    } else value = pattern();
     finish();
     return { type: 'Statement', name: name.text, value: value!, location: name, valueLocation };
   };

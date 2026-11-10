@@ -1,6 +1,6 @@
 import type { Composition, Track } from './types';
 export const sameVoice = (a: Track, b: Track) => a.kind === b.kind && a.instrument === b.instrument;
-const structure = ({ params: _params, ...rest }: Track) => JSON.stringify(rest);
+const structure = ({ params: _params, mute: _mute, solo: _solo, ...rest }: Track) => JSON.stringify(rest);
 export const sameStructure = (a: Track, b: Track) => structure(a) === structure(b);
 export const sameParams = (a: Track, b: Track) => JSON.stringify(a.params) === JSON.stringify(b.params);
 export interface CompositionDiff {

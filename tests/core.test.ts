@@ -4,6 +4,7 @@ import { compile } from '../src/language';
 import { DEFAULT_PARAMS, type AudioBackend, type Composition, type MusicalEvent, type Track, type TrackVoice } from '../src/core/types';
 
 class FakeVoice implements TrackVoice {
+  validateTrack?: (track: Track) => void;
   trigger = vi.fn<(event: MusicalEvent, time: number) => void>();
   updateParams = vi.fn();
   setMuted = vi.fn();
@@ -58,6 +59,20 @@ describe('incremental transport', () => {
     for (const voice of backend.voices) expect(voice.dispose).not.toHaveBeenCalled();
     expect(backend.start).toHaveBeenCalledTimes(1);
     expect(backend.stop).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unavailable instrument on a reused voice and preserves playback', async () => {
+    const drums: Track = { ...synth('drums'), kind: 'drums', instrument: 'trip', drums: { kick: { type: 'literal', value: 'x...x...x...x...' } } };
+    const { engine, backend } = await setup(score([drums, synth()]));
+    backend.voices[0].validateTrack = (track: Track) => { if ('clap' in track.drums) throw new Error('instrumento clap ausente'); };
+    await engine.play(); backend.ticks(2);
+    const next = structuredClone(drums); next.drums.clap = { type: 'literal', value: '....x.......x...' };
+    await expect(engine.submit(score([next, synth()]))).rejects.toThrow('clap');
+    backend.ticks(16);
+    expect(engine.getSnapshot().composition?.tracks[0].drums).not.toHaveProperty('clap');
+    expect(engine.getSnapshot().playing).toBe(true);
+    expect(backend.stop).not.toHaveBeenCalled();
+    expect(backend.voices[1].trigger).toHaveBeenCalled();
   });
 
   it('automates cutoff immediately without a new voice or bar reset', async () => {

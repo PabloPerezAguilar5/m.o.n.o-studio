@@ -10,13 +10,13 @@ export interface EngineSnapshot {
   step: number;
   bar: number;
   muted: string[];
-  solo: string | null;
+  solo: string[];
 }
 export type SubmitResult = 'applied' | 'queued' | 'superseded';
 interface PreparedVoice { track: Track; voice: TrackVoice }
 interface Pending { composition: Composition; voices: Map<string, PreparedVoice> }
 interface DrumRuntime { random: RandomSource; pattern?: GeneratedPattern; generatedAt: number; spec: PatternSpec }
-interface TrackRuntime { noteIndex: number; random: RandomSource; drums: Partial<Record<DrumName, DrumRuntime>> }
+interface TrackRuntime { noteIndex: number; random: RandomSource; drums: Record<DrumName, DrumRuntime> }
 
 /** One transport callback owns musical time. Submissions never restart this clock. */
 export class LiveEngine {
@@ -25,8 +25,7 @@ export class LiveEngine {
   private voices = new Map<string, PreparedVoice>();
   private runtimes = new Map<string, TrackRuntime>();
   private listeners = new Set<() => void>();
-  private muted = new Set<string>();
-  private solo: string | null = null;
+
   private tick = 0;
   private playing = false;
   private disposed = false;
@@ -34,7 +33,8 @@ export class LiveEngine {
   private lifecycle = 0;
   private playPromise: Promise<void> | null = null;
   private latestSubmission: Promise<SubmitResult> | null = null;
-  private snapshot: EngineSnapshot = { playing: false, composition: null, pending: null, step: 0, bar: 0, muted: [], solo: null };
+  private preparingComposition: Composition | null = null;
+  private snapshot: EngineSnapshot = { playing: false, composition: null, pending: null, step: 0, bar: 0, muted: [], solo: [] };
 
   constructor(private readonly backend: AudioBackend) {}
 
@@ -48,12 +48,13 @@ export class LiveEngine {
     if (this.disposed) return Promise.reject(new Error('El motor está cerrado.'));
     // Own a stable value: editing a caller object cannot modify a queued transaction.
     const next = structuredClone(composition);
+    this.preparingComposition = next;
     const operation = this.prepare(next, ++this.revision);
     this.latestSubmission = operation;
     void operation.then(() => {
-      if (this.latestSubmission === operation) this.latestSubmission = null;
+      if (this.latestSubmission === operation) { this.latestSubmission = null; this.preparingComposition = null; }
     }, () => {
-      if (this.latestSubmission === operation) this.latestSubmission = null;
+      if (this.latestSubmission === operation) { this.latestSubmission = null; this.preparingComposition = null; }
     });
     return operation;
   }
@@ -84,6 +85,10 @@ export class LiveEngine {
         const current = this.voices.get(id);
         if (current && sameVoice(current.track, item.track)) { item.voice.dispose(); prepared.delete(id); }
       }
+      for (const track of composition.tracks) {
+        const candidate = prepared.get(track.id) ?? this.voices.get(track.id);
+        candidate?.voice.validateTrack?.(track);
+      }
       this.discardPending();
       const diff = diffCompositions(this.composition, composition);
       const transaction = { composition, voices: prepared };
@@ -98,12 +103,13 @@ export class LiveEngine {
         const targets = new Map(composition.tracks.map(track => [track.id, track]));
         this.composition = { ...this.composition, bpm: composition.bpm, tracks: this.composition.tracks.map(track => {
           const target = targets.get(track.id);
-          if (!target || !sameVoice(track, target) || sameParams(track, target)) return track;
-          this.voices.get(track.id)?.voice.updateParams(target.params);
-          return { ...track, params: { ...target.params } };
+          if (!target) return track;
+          if (sameVoice(track, target) && !sameParams(track, target)) this.voices.get(track.id)?.voice.updateParams(target.params);
+          return { ...track, ...(sameVoice(track, target) ? { params: { ...target.params } } : {}), mute: !!target.mute, solo: !!target.solo };
         }) };
       }
       this.pending = transaction;
+      this.updateAudibility();
       this.emit();
       return 'queued';
     } catch (error) {
@@ -144,6 +150,7 @@ export class LiveEngine {
     ++this.revision;
     this.playPromise = null;
     this.latestSubmission = null;
+    this.preparingComposition = null;
     this.playing = false;
     this.backend.stop();
     this.discardPending();
@@ -154,18 +161,26 @@ export class LiveEngine {
     this.emit();
   }
 
-  setMuted(trackId: string, muted: boolean): void {
-    if (muted) this.muted.add(trackId); else this.muted.delete(trackId);
-    this.updateAudibility();
-    this.emit();
-  }
+  setMuted(trackId: string, muted: boolean): void { this.setTrackAudibility(trackId, 'mute', muted); }
+  setTrackSolo(trackId: string, solo: boolean): void { this.setTrackAudibility(trackId, 'solo', solo); }
+  // Compatibility for existing callers of the original single-solo API.
   setSolo(trackId: string | null): void {
-    this.solo = trackId;
+    for (const track of this.composition?.tracks ?? []) this.setTrackAudibility(track.id, 'solo', track.id === trackId);
+  }
+  private setTrackAudibility(id: string, key: 'mute' | 'solo', value: boolean): void {
+    const update = (composition: Composition | null): Composition | null => composition && ({ ...composition, tracks: composition.tracks.map(track => track.id === id ? { ...track, [key]: value } : track) });
+    this.composition = update(this.composition);
+    if (this.pending) this.pending.composition = update(this.pending.composition)!;
+    // An edit made while samples are loading must survive the eventual commit.
+    const preparing = this.preparingComposition?.tracks.find(track => track.id === id);
+    if (preparing) preparing[key] = value;
     this.updateAudibility();
     this.emit();
   }
   private updateAudibility(): void {
-    for (const [id, item] of this.voices) item.voice.setMuted(this.muted.has(id) || (this.solo !== null && this.solo !== id));
+    const tracks = this.composition?.tracks ?? [];
+    const hasSolo = tracks.some(track => track.solo);
+    for (const track of tracks) this.voices.get(track.id)?.voice.setMuted(!!track.mute || (hasSolo && !track.solo));
   }
   private discardPending(): void {
     if (!this.pending) return;
@@ -202,8 +217,6 @@ export class LiveEngine {
     prepared.clear();
     if (this.composition?.bpm !== composition.bpm) this.backend.setBpm(composition.bpm);
     this.composition = composition;
-    for (const id of this.muted) if (!target.has(id)) this.muted.delete(id);
-    if (this.solo !== null && !target.has(this.solo)) this.solo = null;
     this.updateAudibility();
   }
 
@@ -268,7 +281,7 @@ export class LiveEngine {
       playing: this.playing, composition: this.composition, pending: this.pending?.composition ?? null,
       step: this.tick > 0 ? (this.tick - 1) % 16 : 0,
       bar: this.tick > 0 ? Math.floor((this.tick - 1) / 16) + 1 : 0,
-      muted: [...this.muted], solo: this.solo,
+      muted: (this.composition?.tracks ?? []).filter(track => track.mute).map(track => track.id), solo: (this.composition?.tracks ?? []).filter(track => track.solo).map(track => track.id),
     };
     // A failed visual subscriber must never abort an audio scheduling callback.
     for (const listener of this.listeners) {

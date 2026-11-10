@@ -51,7 +51,7 @@ class ToneTrackVoice implements TrackVoice {
       for (const instrument of Object.keys(samples)) {
         const buffers = samples[instrument];
         if (!buffers?.length) continue; // Validated before constructing any nodes.
-        const pool = Array.from({ length: 4 }, (_, index) => {
+        const pool = Array.from({ length: buffers.length * 4 }, (_, index) => {
           const player = new Tone.Player({ url: buffers[index % buffers.length], fadeIn: 0.002, fadeOut: 0.006 }).connect(this.filter);
           player.volume.value = -6;
           return player;
@@ -60,6 +60,13 @@ class ToneTrackVoice implements TrackVoice {
       }
     }
     this.updateParams(track.params, Tone.immediate());
+  }
+
+  validateTrack(track: Track): void {
+    if (track.kind !== 'drums') return;
+    for (const instrument of Object.keys(track.drums)) {
+      if (!this.players.has(instrument)) throw new Error(`Kit "${track.instrument}": falta el instrumento ${instrument} en el manifiesto.`);
+    }
   }
 
   async ready(): Promise<void> { await this.reverb.ready; }
@@ -164,7 +171,7 @@ export class ToneBackend implements AudioBackend {
     const samples = track.kind === 'drums' ? await this.samples!.load(track.instrument) : undefined;
     if (this.disposed) throw new Error('El motor de audio está cerrado.');
     if (samples) {
-      for (const instrument of ['kick', 'snare', 'hat', ...Object.keys(track.drums)]) {
+      for (const instrument of Object.keys(track.drums)) {
         if (!samples[instrument]?.length) throw new Error(`Kit "${track.instrument}": falta el instrumento ${instrument} en el manifiesto.`);
       }
     }
