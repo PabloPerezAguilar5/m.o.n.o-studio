@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "kits": [
+    { "id": "trip", "name": "Trip · archivos locales", "instruments": {
+      "kick": ["drums/trip/kick.wav"], "snare": ["drums/trip/snare.wav"], "hat": ["drums/trip/hat.wav"]
+    } },
+    { "id": "glitch", "name": "Glitch · archivos locales", "instruments": {
+      "kick": ["drums/glitch/kick.wav"], "snare": ["drums/glitch/snare.wav"], "hat": ["drums/glitch/hat.wav"]
+    } }
+  ]
+}
