@@ -85,6 +85,58 @@ describe('Tone backend lifecycle and scheduling', () => {
     expect(mock.nodes.every(node => node.dispose.mock.calls.length === 1)).toBe(true);
   });
 
+  it('previews synths and real sample buffers without stopping tracks and cleans up replaced previews', async () => {
+    const backend = new ToneBackend();
+    const voice = await backend.createVoice(track());
+    backend.start(() => {});
+    const trackNodes = mock.nodes.slice(3);
+    await backend.previewSynth('sub');
+    const synth = mock.nodes.filter(node => node.kind === 'PolySynth').at(-1)!;
+    expect(mock.resume).toHaveBeenCalledTimes(1);
+    expect(mock.callbacks.size).toBe(1);
+    await backend.previewSample('trip', 'snare');
+    expect(synth.dispose).toHaveBeenCalledTimes(1);
+    expect(mock.callbacks.size).toBe(1);
+    expect(trackNodes.every(node => !node.dispose.mock.calls.length)).toBe(true);
+    const player = mock.nodes.filter(node => node.kind === 'Player').at(-1)!;
+    expect(player.start).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(1100);
+    expect(player.dispose).toHaveBeenCalledTimes(1);
+    await expect(backend.previewSample('trip', 'not-present')).rejects.toThrow('variación');
+    expect(mock.callbacks.size).toBe(1);
+    voice.dispose(); backend.dispose();
+  });
+
+  it('cancels an in-flight preview when closed before audio unlock', async () => {
+    const backend = new ToneBackend();
+    let unlock!: () => void;
+    mock.resume.mockImplementationOnce(() => new Promise<void>(resolve => { unlock = resolve; }));
+    const pending = backend.previewSynth('pad');
+    backend.stopPreview(); unlock(); await pending;
+    expect(mock.nodes.filter(node => node.kind === 'PolySynth')).toHaveLength(0);
+    backend.dispose();
+  });
+
+  it('ignores an older kit preview that finishes loading after a newer synth preview', async () => {
+    const backend = new ToneBackend();
+    await backend.initialize();
+    let finish!: (value: Record<string, AudioBuffer[]>) => void;
+    const load = vi.fn(() => new Promise<Record<string, AudioBuffer[]>>(resolve => { finish = resolve; }));
+    const internals = backend as unknown as { samples: { load: typeof load; dispose(): void } };
+    internals.samples = { load, dispose: vi.fn() };
+    const older = backend.previewSample('trip', 'kick');
+    await Promise.resolve(); await Promise.resolve();
+    expect(load).toHaveBeenCalledTimes(1);
+    await backend.previewSynth('fm');
+    finish({ kick: [{ duration: 1 } as AudioBuffer] });
+    await older;
+    expect(mock.nodes.filter(node => node.kind === 'Player')).toHaveLength(0);
+    const synth = mock.nodes.filter(node => node.kind === 'PolySynth').at(-1)!;
+    backend.stopPreview();
+    expect(synth.dispose).toHaveBeenCalledTimes(1);
+    backend.dispose();
+  });
+
   it('uses a single transport callback and removes it on STOP', async () => {
     const backend = new ToneBackend();
     await backend.initialize();

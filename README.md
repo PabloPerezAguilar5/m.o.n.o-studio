@@ -1,5 +1,11 @@
 # M.O.N.O. Studio
 
+## M.O.N.O. Reference
+
+Abre **M.O.N.O. Reference** desde el icono de libro de la barra lateral. El panel reúne instrumentos, kits del manifiesto, generadores, parámetros, comandos y ejemplos, y puede utilizarse mientras suena la sesión. **TRY SOUND** preescucha un preset; en Drum Kits despliega cada instrumento para escuchar sus variaciones reales. El volumen maestro también afecta a la preescucha, que utiliza una sola voz temporal y se libera al terminar o cerrar el panel.
+
+En Instruments, configura una pista, revisa los avisos de escala y nombre, y usa INSERTAR o COPIAR. La inserción añade código al editor sin aplicarlo: pulsa Ctrl + Enter cuando estés listo. Los ejemplos de generador se insertan en la posición del cursor, dentro de una pista de kit. En Monaco, pasa el puntero sobre un comando o escribe `synth "` para consultar sus opciones. La Pattern Library mantiene su acceso independiente.
+
 **Musical Orchestration & Noise Operations** · aplicación 0.1.0 · lenguaje 0.1
 
 Instrumento local de live coding con React, TypeScript, Vite, Tone.js, Monaco y Zustand. Escribe código M.O.N.O., pulsa PLAY y cambia la composición con Ctrl + Enter mientras el transporte continúa. El compilador, el estado musical y el adaptador de audio están separados.
@@ -42,7 +48,7 @@ Para registrar nuevos WAV o carpetas, ejecuta `node scripts/register-kits.mjs`. 
 ## Alcance de la versión
 
 - 4/4, patrones de 16 semicorcheas, BPM entre 30 y 300; `rate` admite 1/4, 1/8 y 1/16.
-- Escalas mayores y menores naturales; las notas fuera de escala se rechazan sin transposición.
+- Escalas mayores y menores naturales como referencia; `scale_mode suggest` avisa sobre notas cromáticas, `free` las permite sin avisos y `strict` las rechaza. Nunca se transponen automáticamente.
 - Presets `sub`, `analog`, `fm` y `pad`, con filtro, resonancia, volumen, delay y reverb por pista.
 - Generadores `random`, `riot`, `evolve`, `minimal`, `dense`, `human`, `glitch` y `euclid`, semillas reproducibles y regeneración `every N bars`.
 - Parámetros continuos suavizados; patrones, notas, altas, bajas y cambios de instrumento se aplican sin reiniciar el reloj compartido. Las pistas compatibles conservan sus nodos.

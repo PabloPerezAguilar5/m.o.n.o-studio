@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { LiveEngine, diffCompositions } from '../src/core';
 import { compile } from '../src/language';
 import { DEFAULT_PARAMS, type AudioBackend, type Composition, type MusicalEvent, type Track, type TrackVoice } from '../src/core/types';
+import { currentBarStart, notesForSteps } from '../src/studio/pattern-sequencer';
 
 class FakeVoice implements TrackVoice {
   validateTrack?: (track: Track) => void;
@@ -26,7 +27,7 @@ class FakeBackend implements AudioBackend {
 function synth(id = 'bass'): Track {
   return { id, kind: 'synth', instrument: 'sub', drums: {}, notes: ['D2', 'F2', 'A2'], pattern: 'x...x...x...x...', arp: 'up', rate: 8, params: { ...DEFAULT_PARAMS } };
 }
-function score(tracks: Track[] = [synth()]): Composition { return { version: '0.1', bpm: 120, scale: 'D_minor', seed: 12345, tracks }; }
+function score(tracks: Track[] = [synth()]): Composition { return { version: '0.1', bpm: 120, scale: 'D_minor', scaleMode: 'suggest', seed: 12345, tracks }; }
 const setup = async (composition = score()) => { const backend = new FakeBackend(); const engine = new LiveEngine(backend); await engine.submit(composition); return { backend, engine }; };
 const deferred = <T,>() => { let resolve!: (value: T) => void; let reject!: (reason?: unknown) => void; const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej; }); return { promise, resolve, reject }; };
 
@@ -44,6 +45,17 @@ describe('composition differences', () => {
 });
 
 describe('incremental transport', () => {
+  it('exposes the actual note phase so a visual bar follows the engine across cycles', async () => {
+    const track = synth(); track.notes = ['D2', 'F2', 'A2'];
+    const { engine, backend } = await setup(score([track]));
+    await engine.play(); backend.ticks(17);
+    const snapshot = engine.getSnapshot();
+    expect(snapshot).toMatchObject({ bar: 2, step: 0, noteIndices: { bass: 5 } });
+    const first = currentBarStart(track.pattern!, snapshot.step, snapshot.noteIndices.bass);
+    expect(notesForSteps(track.pattern!, track.notes, first).filter(Boolean)).toEqual(['F2', 'A2', 'D2', 'F2']);
+    expect(backend.voices[0].trigger.mock.calls.at(-1)?.[0].note).toBe('F2');
+    engine.dispose();
+  });
   it('keeps unchanged and pattern-edited voices alive, applying at the next bar', async () => {
     const { engine, backend } = await setup(score([synth(), synth('lead')]));
     await engine.play();
@@ -305,7 +317,7 @@ describe('musical events and regeneration', () => {
     const validEdit = initial.replace('D2 F2 A2', 'A2 C3 D3');
     await applySource(validEdit);
     const pendingBefore = engine.getSnapshot().pending;
-    const invalidEdit = await applySource(validEdit.replace('C3', 'C#3'));
+    const invalidEdit = await applySource(`scale_mode strict\n${validEdit.replace('C3', 'C#3')}`);
     expect(invalidEdit.composition).toBeUndefined();
     expect(invalidEdit.diagnostics[0].message).toContain('no pertenece');
     expect(engine.getSnapshot().pending).toBe(pendingBefore);

@@ -49,7 +49,7 @@ test('custom patterns persist and can be filtered without applying the score', a
   await page.getByLabel('Estilo del patrón').selectOption('Glitch');
   await page.getByLabel('Secuencia del patrón').fill('x...x...x...x...');
   await page.getByRole('button', { name: 'GUARDAR', exact: true }).click();
-  await expect(page.getByRole('status').last()).toContainText('guardado');
+  await expect(page.getByRole('complementary', { name: 'Pattern library' }).getByRole('status')).toContainText('guardado');
   await page.reload(); await page.getByRole('button', { name: 'Biblioteca de patrones' }).click();
   await page.getByLabel('Filtrar por estilo').selectOption('Glitch');
   await page.getByLabel('Filtrar por instrumento').selectOption('perc');

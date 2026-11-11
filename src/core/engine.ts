@@ -9,6 +9,7 @@ export interface EngineSnapshot {
   pending: Composition | null;
   step: number;
   bar: number;
+  noteIndices: Record<string, number>;
   muted: string[];
   solo: string[];
 }
@@ -34,7 +35,7 @@ export class LiveEngine {
   private playPromise: Promise<void> | null = null;
   private latestSubmission: Promise<SubmitResult> | null = null;
   private preparingComposition: Composition | null = null;
-  private snapshot: EngineSnapshot = { playing: false, composition: null, pending: null, step: 0, bar: 0, muted: [], solo: [] };
+  private snapshot: EngineSnapshot = { playing: false, composition: null, pending: null, step: 0, bar: 0, noteIndices: {}, muted: [], solo: [] };
 
   constructor(private readonly backend: AudioBackend) {}
 
@@ -281,6 +282,7 @@ export class LiveEngine {
       playing: this.playing, composition: this.composition, pending: this.pending?.composition ?? null,
       step: this.tick > 0 ? (this.tick - 1) % 16 : 0,
       bar: this.tick > 0 ? Math.floor((this.tick - 1) / 16) + 1 : 0,
+      noteIndices: Object.fromEntries([...this.runtimes].map(([id, runtime]) => [id, runtime.noteIndex])),
       muted: (this.composition?.tracks ?? []).filter(track => track.mute).map(track => track.id), solo: (this.composition?.tracks ?? []).filter(track => track.solo).map(track => track.id),
     };
     // A failed visual subscriber must never abort an audio scheduling callback.

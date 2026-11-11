@@ -1,4 +1,5 @@
-import { DEFAULT_PARAMS, LANGUAGE_VERSION, type Composition, type Diagnostic, type GeneratorName, type PatternSpec, type Track } from '../core/types';
+import { PARAMETER_LIMITS, SCALE_MODES, SYNTH_PRESETS } from './reference';
+import { DEFAULT_PARAMS, LANGUAGE_VERSION, type Composition, type Diagnostic, type GeneratorName, type PatternSpec, type ScaleMode, type Track } from '../core/types';
 import type { ProgramNode, SourceLocation, StatementNode } from './ast';
 
 export interface GeneratorRule {
@@ -33,12 +34,34 @@ export function scalePitchClasses(scale: string): number[] | undefined {
   return intervals.map((value) => (value + root) % 12);
 }
 
+/** Nearest scale tones above and below, using explicit note names and octaves. */
+export function nearestScaleNotes(note: string, allowed: readonly number[]): string[] {
+  const match = /^([A-G])([#b]?)([0-8])$/.exec(note);
+  if (!match || !allowed.length) return [];
+  const pitch = Number(match[3]) * 12 + noteClasses[match[1]] + (match[2] === '#' ? 1 : match[2] === 'b' ? -1 : 0);
+  const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  return [-1, 1].flatMap(direction => {
+    for (let distance = 1; distance <= 12; distance++) {
+      const candidate = pitch + distance * direction;
+      if (candidate < 0 || candidate > 107) break;
+      if (allowed.includes(candidate % 12)) return [`${names[candidate % 12]}${Math.floor(candidate / 12)}`];
+    }
+    return [];
+  });
+}
+
 export function validate(ast: ProgramNode, options: ValidationOptions = {}): { composition?: Composition; diagnostics: Diagnostic[] } {
   const diagnostics: Diagnostic[] = [];
-  const report = (location: SourceLocation, message: string) => {
-    if (diagnostics.length < 100) diagnostics.push({ line: location.line, column: location.column, length: Math.max(1, location.length), message, severity: 'error' });
+  const report = (location: SourceLocation, message: string, severity: Diagnostic['severity'] = 'error', suggestions?: string[]) => {
+    const diagnostic: Diagnostic = { line: location.line, column: location.column, length: Math.max(1, location.length), message, severity, ...(suggestions ? { code: 'out-of-scale', suggestions } : {}) };
+    if (diagnostics.length < 100) diagnostics.push(diagnostic);
+    else if (severity === 'error') {
+      for (let i = diagnostics.length - 1; i >= 0; i--) {
+        if (diagnostics[i].severity === 'warning') { diagnostics[i] = diagnostic; break; }
+      }
+    }
   };
-  const composition: Composition = { version: LANGUAGE_VERSION, bpm: 95, scale: 'D_minor', seed: 12345, tracks: [] };
+  const composition: Composition = { version: LANGUAGE_VERSION, bpm: 95, scale: 'D_minor', scaleMode: 'suggest', seed: 12345, tracks: [] };
   const globalNames = new Set<string>();
   for (const global of ast.globals) {
     if (globalNames.has(global.name)) report(global.location, `El comando global "${global.name}" está duplicado.`);
@@ -51,6 +74,10 @@ export function validate(ast: ProgramNode, options: ValidationOptions = {}): { c
       const value = Number(global.value);
       if (!Number.isInteger(value) || value < 0 || value > 4294967295) report(global.location, 'seed debe ser un entero entre 0 y 4294967295.');
       else composition.seed = value;
+    } else if (global.name === 'scale_mode') {
+      const value = String(global.value);
+      if (!SCALE_MODES.some(mode => mode.id === value)) report(global.location, 'scale_mode admite free, suggest o strict.');
+      else composition.scaleMode = value as ScaleMode;
     } else {
       const value = String(global.value);
       if (!scalePitchClasses(value)) report(global.location, 'Escala inválida. Usa una raíz A–G, # o b opcional, y _major o _minor; por ejemplo D_minor.');
@@ -75,7 +102,7 @@ export function validate(ast: ProgramNode, options: ValidationOptions = {}): { c
     if (!kit && !synth) report(node.location, `La pista "${node.name}" necesita kit "nombre" o synth "preset".`);
     if (kit && synth) report(synth.location, 'Una pista debe declarar kit o synth, nunca ambos.');
     if (kit && !/^[A-Za-z0-9_-]{1,64}$/.test(String(kit.value))) report(kit.valueLocation, 'El kit debe ser un identificador local de hasta 64 caracteres (letras, números, _ y -).');
-    if (synth && !['sub', 'analog', 'fm', 'pad'].includes(String(synth.value))) report(synth.valueLocation, 'Preset desconocido. Usa sub, analog, fm o pad.');
+    if (synth && !SYNTH_PRESETS.some(preset => preset.id === String(synth.value))) report(synth.valueLocation, 'Preset desconocido. Usa sub, analog, fm o pad.');
     const track: Track = {
       id: node.name, kind: kit ? 'drums' : 'synth', instrument: String((kit ?? synth)?.value ?? ''),
       mute: statements.get('mute')?.value === true, solo: statements.get('solo')?.value === true,
@@ -85,7 +112,7 @@ export function validate(ast: ProgramNode, options: ValidationOptions = {}): { c
       const statement = statements.get(key);
       if (!statement) continue;
       const value = Number(statement.value);
-      const [min, max] = key === 'cutoff' ? [20, 20000] : [0, 1];
+      const { min, max } = PARAMETER_LIMITS[key];
       if (!Number.isFinite(value) || value < min || value > max) report(statement.valueLocation, `${key} debe estar entre ${min} y ${max}.`);
       else track.params[key] = value;
     }
@@ -118,10 +145,15 @@ export function validate(ast: ProgramNode, options: ValidationOptions = {}): { c
     if (notes) {
       track.notes = notes.value as string[];
       if (track.notes.length > 128) report(notes.valueLocation, 'Una pista admite hasta 128 notas.');
-      for (const note of track.notes) {
+      for (const [index, note] of track.notes.entries()) {
+        const location = notes.noteLocations?.[index] ?? notes.valueLocation;
         const pitchClass = notePitchClass(note);
-        if (pitchClass === undefined) report(notes.valueLocation, `Nota inválida: "${note}". Usa A–G, # o b opcional y octava 0–8.`);
-        else if (!allowedNotes.includes(pitchClass)) report(notes.valueLocation, `La nota ${note} no pertenece a ${composition.scale}. No se transpone automáticamente.`);
+        if (pitchClass === undefined) report(location, `Nota inválida: "${note}". Usa A–G, # o b opcional y octava 0–8.`);
+        else if (composition.scaleMode !== 'free' && !allowedNotes.includes(pitchClass)) {
+          const suggestions = nearestScaleNotes(note, allowedNotes);
+          const alternatives = suggestions.length ? ` Alternativas cercanas: ${suggestions.join(', ')}.` : '';
+          report(location, `La nota ${note} no pertenece a ${composition.scale}.${alternatives} La nota original se conserva.`, composition.scaleMode === 'strict' ? 'error' : 'warning', suggestions);
+        }
       }
     }
     const pattern = statements.get('pattern');
@@ -142,5 +174,5 @@ export function validate(ast: ProgramNode, options: ValidationOptions = {}): { c
     }
     composition.tracks.push(track);
   }
-  return { ...(diagnostics.length ? {} : { composition }), diagnostics };
+  return { ...(diagnostics.some(item => item.severity === 'error') ? {} : { composition }), diagnostics };
 }

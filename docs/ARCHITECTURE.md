@@ -1,5 +1,9 @@
 # Arquitectura M.O.N.O. Studio 0.1
 
+## Referencia y preescuchas
+
+El registro `src/language/reference.ts` concentra metadatos para el panel, la ayuda de Monaco, los presets y los límites compartidos con la validación. El generador visual compila el resultado antes de habilitar la inserción. La preescucha reutiliza el sintetizador y la biblioteca de samples del backend, pero crea una voz temporal independiente del transporte; la petición más reciente reemplaza la anterior y los nodos se liberan al terminar o cerrar el panel.
+
 La aplicación es un cliente local. El código musical se transforma en datos validados; el núcleo conserva una composición activa y prepara cambios incrementales; el adaptador Tone.js produce audio; React presenta el estado. Ningún módulo ejecuta el código del usuario como JavaScript.
 
 ```mermaid
@@ -34,7 +38,7 @@ El lenguaje importa únicamente tipos y valores musicales del núcleo. El núcle
 
 ## Representación musical
 
-Una `Composition` contiene versión del lenguaje, BPM, escala, semilla y una lista de pistas. Cada `Track` tiene un `id` estable, tipo `drums` o `synth`, nombre de kit/preset, parámetros independientes y datos de patrón o notas. El nombre de pista identifica su continuidad entre revisiones. Renombrarla equivale a eliminar una pista y añadir otra.
+Una `Composition` contiene versión del lenguaje, BPM, escala, modo de escala, semilla y una lista de pistas. Los diagnósticos de advertencia no impiden crearla. Cada `Track` tiene un `id` estable, tipo `drums` o `synth`, nombre de kit/preset, parámetros independientes y datos de patrón o notas. El nombre de pista identifica su continuidad entre revisiones. Renombrarla equivale a eliminar una pista y añadir otra.
 
 `PatternSpec` representa un patrón literal o una llamada generativa con argumentos e intervalo opcional. La generación produce 16 listas de golpes con velocidad y offset. El scheduler convierte cada golpe en un `MusicalEvent` que contiene pista, nota o instrumento, velocidad, desplazamiento temporal en segundos y duración. La API entrega al adaptador el tiempo exacto del callback de transporte; el adaptador añade el offset del evento.
 

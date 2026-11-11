@@ -97,7 +97,7 @@ Este ejemplo aparece como **Broken machinery**. Sustituye `hat glitch(0.7) every
 2. Modifica cutoff y volumen; aplica con Ctrl + Enter. Las pistas conservan su fase.
 3. Añade una pista de sintetizador válida. Debe entrar en el siguiente compás sin reiniciar las otras.
 4. Elimina esa pista y vuelve a aplicar. Debe retirarse en un límite de compás.
-5. Escribe una nota fuera de escala, como `F#2` en `D_minor`, y aplica. Debe aparecer un diagnóstico mientras continúa la composición anterior.
+5. Escribe una nota fuera de escala, como `F#2` en `D_minor`, y aplica. En el modo predeterminado `suggest` aparece un aviso y la edición se aplica sin detener el transporte. Con `scale_mode strict` aparece un error y continúa la composición anterior.
 6. Corrige el error. Aplica dos patrones diferentes dentro de un mismo compás. La última preparación válida debe ser la que entra.
 7. Con tus WAV instalados, abre Euclidean transmission y aplica. Modifica un patrón de batería y observa que el tempo se mantiene.
 8. Activa MUTE y SOLO; desactívalos para recuperar la salida sin reiniciar las secuencias.

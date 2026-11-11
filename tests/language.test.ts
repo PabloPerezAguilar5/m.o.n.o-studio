@@ -112,8 +112,8 @@ track lead {
     expect(result.diagnostics).toEqual([]);
     expect(result.composition?.tracks[0].notes).toEqual(['Bb3', 'D4', 'F4', 'A#4']);
   });
-  it('rejects out-of-scale and malformed notes', () => {
-    expect(compile(melodic().replace('D2 F2 A2 C3', 'F#2')).diagnostics[0].message).toContain('no pertenece');
+  it('warns about out-of-scale notes and rejects malformed notes', () => {
+    expect(compile(melodic().replace('D2 F2 A2 C3', 'F#2')).diagnostics[0]).toMatchObject({ severity: 'warning', message: expect.stringContaining('no pertenece') });
     expect(compile(melodic().replace('D2 F2 A2 C3', 'D9')).diagnostics[0].message).toContain('Nota inválida');
   });
   it.each(['volume -0.01', 'resonance 1.01', 'delay 2', 'reverb -1', 'cutoff 19', 'cutoff 20001'])(

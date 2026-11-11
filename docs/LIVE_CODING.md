@@ -2,6 +2,8 @@
 
 La composición compilada es un valor independiente de Tone.js. `LiveEngine` recibe exclusivamente composiciones validadas y usa `AudioBackend`; el editor conserva y muestra los diagnósticos de una compilación fallida sin llamar a `submit`.
 
+Con el modo predeterminado `scale_mode suggest`, las notas fuera de escala producen avisos, pero la compilación sigue siendo válida y se envía al motor. En `free` no producen avisos; en `strict` son errores y se conserva la última composición válida. Ningún modo transpone las notas.
+
 ## Transacción
 
 1. El compilador analiza y valida el código completo.

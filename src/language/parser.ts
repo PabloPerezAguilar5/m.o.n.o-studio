@@ -43,6 +43,7 @@ export function parse(source: string): ParseResult {
     const name = identifier();
     const valueLocation = { ...current() };
     let value: StatementNode['value'];
+    let noteLocations: StatementNode['noteLocations'];
     if (numericStatements.has(name.text)) value = number();
     else if (name.text === 'kit' || name.text === 'synth' || name.text === 'pattern') value = expect('string', `"${name.text}" necesita una cadena entre comillas dobles.`).text;
     else if (name.text === 'mute' || name.text === 'solo') {
@@ -58,12 +59,13 @@ export function parse(source: string): ParseResult {
       value = `${numerator}/${denominator}`;
     } else if (name.text === 'notes') {
       const notes: string[] = [];
-      while (current().kind === 'identifier') notes.push(take().text);
+      noteLocations = [];
+      while (current().kind === 'identifier') { const note = take(); notes.push(note.text); noteLocations.push(note); }
       if (!notes.length) report(current(), 'Declara al menos una nota, por ejemplo D2 F2 A2.');
       value = notes;
     } else value = pattern();
     finish();
-    return { type: 'Statement', name: name.text, value: value!, location: name, valueLocation };
+    return { type: 'Statement', name: name.text, value: value!, location: name, valueLocation, ...(noteLocations ? { noteLocations } : {}) };
   };
   const track = (): TrackNode => {
     const token = take();
@@ -86,8 +88,8 @@ export function parse(source: string): ParseResult {
       if (current().text === 'track') ast.tracks.push(track());
       else {
         const name = identifier();
-        if (!['bpm', 'scale', 'seed'].includes(name.text)) report(name, `Comando global desconocido: "${name.text}". Usa bpm, scale, seed o track.`);
-        const value = name.text === 'scale' ? identifier().text : number();
+        if (!['bpm', 'scale', 'scale_mode', 'seed'].includes(name.text)) report(name, `Comando global desconocido: "${name.text}". Usa bpm, scale, scale_mode, seed o track.`);
+        const value = name.text === 'scale' || name.text === 'scale_mode' ? identifier().text : number();
         finish();
         ast.globals.push({ type: 'Global', name: name.text as GlobalNode['name'], value, location: name });
       }

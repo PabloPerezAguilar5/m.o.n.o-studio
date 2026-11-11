@@ -1,5 +1,11 @@
 # M.O.N.O. Language 0.1
 
+## Referencia interactiva
+
+M.O.N.O. Reference está disponible desde la barra lateral sin detener la música. Contiene descripciones y ejemplos para los comandos, presets, parámetros y generadores admitidos. Sus fichas de kits leen los instrumentos y variaciones del manifiesto. Las preescuchas usan una voz temporal y el volumen maestro, sin cambiar la composición.
+
+El configurador de sintetizador valida las notas, el modo de escala, el nombre y los rangos antes de permitir copiar o insertar. Los avisos no bloquean la inserción. Las pistas generadas se añaden al final del editor; las líneas de generador se insertan en el cursor. Ninguna inserción aplica los cambios por sí sola.
+
 El compilador transforma texto en AST y después en una composición musical tipada. Nunca ejecuta JavaScript. Los errores contienen línea, columna y longitud para Monaco. Si hay un error, `compile()` no devuelve composición; el llamador conserva la música válida anterior.
 
 ## Inicio rápido
@@ -35,9 +41,22 @@ Escribe una instrucción por línea. Los comentarios empiezan con `//`. Los coma
 | --- | --- | --- |
 | `bpm` | Número entre 30 y 300 | 95 |
 | `scale` | Raíz A–G, alteración `#` o `b` opcional, `_major` o `_minor` | D_minor |
+| `scale_mode` | `free`, `suggest` o `strict` | suggest |
 | `seed` | Entero entre 0 y 4294967295 | 12345 |
 
-La métrica es 4/4. Las escalas menores son naturales. `Bb_major` y `F#_minor` son válidas. Las notas fuera de escala son errores; nunca se corrigen ni transponen automáticamente. Las notas se escriben con letra mayúscula, alteración opcional y octava 0–8, como `D2`, `F#4`, `Bb3`. La validación trata las equivalencias enarmónicas como la misma clase de altura.
+La métrica es 4/4. Las escalas menores son naturales. `Bb_major` y `F#_minor` son válidas. Las notas se escriben con letra mayúscula, alteración opcional y octava 0–8, como `D2`, `F#4`, `Bb3`. La validación trata las equivalencias enarmónicas como la misma clase de altura.
+
+`scale_mode suggest` es el valor predeterminado, también para los proyectos anteriores: una nota válida fuera de escala produce un aviso y la composición se reproduce. Monaco muestra alternativas cercanas mediante acciones rápidas, que solo cambian el código si las eliges. `scale_mode free` acepta cualquier nota válida sin avisos; `scale_mode strict` rechaza las notas que no pertenecen a la escala. La escala sigue guardándose como referencia en todos los modos y las notas nunca se corrigen ni transponen automáticamente.
+
+```mono
+scale E_minor
+scale_mode suggest // usa free para omitir avisos o strict para exigir la escala
+track bass {
+  synth "analog"
+  notes E2 F2 G2 Bb2
+  pattern "x...x...x...x..."
+}
+```
 
 ## Pistas
 
@@ -55,6 +74,8 @@ track drums {
 ```
 
 Cada patrón literal tiene exactamente 16 caracteres: `x` es golpe y `.` silencio. Cada carácter representa una semicorchea; el patrón completo dura un compás. Los sintetizadores con `pattern` recorren las notas declaradas, avanzando solamente con los pasos activos.
+
+Una pista `synth` con `pattern` válido muestra automáticamente un secuenciador de 16 botones en su tarjeta. Cada botón cambia el carácter correspondiente en el código; el audio cambia al aplicar con Ctrl + Enter. Ctrl + Z deshace la edición visual. Las notas bajo los pasos siguen el orden de la lista y avanzan solo en los golpes; si el patrón del editor coincide con el activo, muestran el orden del compás actual. Los patrones sin aplicar muestran la primera vuelta.
 
 Sin `pattern`, el sintetizador usa un arpegiador: `arp up`, `down`, `updown` o `random`, con `rate 1/4`, `1/8` o `1/16`. Los valores predeterminados son `up` y `1/8`. No se combina `pattern` con declaraciones explícitas `arp` o `rate`: el patrón ya fija posiciones de semicorchea.
 

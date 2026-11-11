@@ -1,6 +1,7 @@
 import * as Tone from 'tone';
 import type { AudioBackend, MusicalEvent, Track, TrackParams, TrackVoice } from '../core/types';
 import { SampleLibrary, type LoadedKit } from './samples';
+import { SYNTH_PRESETS } from '../language/reference';
 
 export { SampleLibrary, parseKitManifest } from './samples';
 export type { KitDefinition, KitManifest, LoadedKit } from './samples';
@@ -146,6 +147,9 @@ export class ToneBackend implements AudioBackend {
   private volume = 0.7;
   private disposed = false;
   private readonly silence = new Float32Array(512);
+  private previewRevision = 0;
+  private preview?: { dispose(): void };
+  private previewTimer?: ReturnType<typeof setTimeout>;
 
   private ensureGraph(): void {
     if (this.disposed) throw new Error('El motor de audio está cerrado.');
@@ -164,6 +168,59 @@ export class ToneBackend implements AudioBackend {
     if (this.disposed) throw new Error('El motor de audio está cerrado.');
     await Tone.start();
     this.ensureGraph();
+  }
+
+  /** Preview voices are independent of the transport and never enter the track graph. */
+  async previewSynth(preset: string): Promise<void> {
+    if (!SYNTH_PRESETS.some(item => item.id === preset)) throw new Error(`Preset desconocido: ${preset}.`);
+    const revision = this.beginPreview();
+    await this.initialize();
+    if (this.disposed || revision !== this.previewRevision) return;
+    const output = new Tone.Gain(0.18).connect(this.master!);
+    let synth: Synth;
+    try { synth = createSynth(preset).connect(output); }
+    catch (error) { output.dispose(); throw error; }
+    this.preview = { dispose: () => { synth.dispose(); output.dispose(); } };
+    try {
+      const note = SYNTH_PRESETS.find(item => item.id === preset)!.note;
+      synth.triggerAttackRelease(note, preset === 'pad' ? 0.8 : 0.35, Tone.now() + 0.02, 0.65);
+      this.schedulePreviewCleanup(preset === 'pad' ? 3200 : 1600, revision);
+    } catch (error) { this.stopPreview(); throw error; }
+  }
+
+  async previewSample(kit: string, instrument: string, variation = 0): Promise<void> {
+    const revision = this.beginPreview();
+    await this.initialize();
+    if (this.disposed || revision !== this.previewRevision) return;
+    const samples = await this.samples!.load(kit);
+    if (this.disposed || revision !== this.previewRevision) return;
+    const buffers = samples[instrument];
+    if (!buffers || !Number.isInteger(variation) || variation < 0 || variation >= buffers.length) throw new Error(`Kit "${kit}": no existe la variación ${variation + 1} de ${instrument}.`);
+    const output = new Tone.Gain(0.18).connect(this.master!);
+    let player: Tone.Player;
+    try { player = new Tone.Player({ url: buffers[variation], fadeIn: 0.002, fadeOut: 0.006 }).connect(output); }
+    catch (error) { output.dispose(); throw error; }
+    player.volume.value = -6;
+    this.preview = { dispose: () => { player.dispose(); output.dispose(); } };
+    try {
+      player.start(Tone.now() + 0.02);
+      this.schedulePreviewCleanup(Math.min(4000, Math.max(300, (buffers[variation].duration || 1) * 1000 + 100)), revision);
+    } catch (error) { this.stopPreview(); throw error; }
+  }
+
+  private beginPreview(): number {
+    this.stopPreview();
+    return this.previewRevision;
+  }
+  private schedulePreviewCleanup(delay: number, revision: number): void {
+    this.previewTimer = setTimeout(() => { if (revision === this.previewRevision) this.stopPreview(); }, delay);
+  }
+  stopPreview(): void {
+    ++this.previewRevision;
+    if (this.previewTimer) clearTimeout(this.previewTimer);
+    this.previewTimer = undefined;
+    this.preview?.dispose();
+    this.preview = undefined;
   }
 
   async createVoice(track: Track): Promise<TrackVoice> {
@@ -221,6 +278,7 @@ export class ToneBackend implements AudioBackend {
 
   dispose(): void {
     if (this.disposed) return;
+    this.stopPreview();
     this.stop();
     this.disposed = true;
     for (const voice of [...this.voices]) voice.destroy();

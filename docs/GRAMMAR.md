@@ -4,7 +4,7 @@ La implementación usa un lexer por caracteres y un parser descendente. Los salt
 
 ```ebnf
 program       = { blank | global | track } ;
-global        = ( "bpm" number | "scale" identifier | "seed" number ) end ;
+global        = ( "bpm" number | "scale" identifier | "scale_mode" identifier | "seed" number ) end ;
 track         = "track" identifier "{" { blank | statement } "}" end ;
 statement     = instrument | drum | notes | pattern | arp | rate | parameter ;
 instrument    = ( "kit" | "synth" ) string end ;
@@ -26,7 +26,7 @@ end           = newline | before_closing_brace | end_of_file ;
 
 Espacios y tabulaciones se ignoran fuera de cadenas. `//` inicia un comentario hasta el fin de línea; dentro de una cadena son caracteres normales. Las cadenas no pueden contener saltos de línea. Se admiten escapes para comilla doble y barra inversa. Los identificadores léxicos son deliberadamente amplios para notas y escalas; la validación restringe los nombres de pista y kit.
 
-Las restricciones musicales se comprueban después del análisis sintáctico: notas de la escala, presets, exclusión kit/synth, parámetros, nombres únicos, longitudes de patrón, aridad y rangos de generadores. El AST conserva ubicaciones de origen y la representación intermedia contiene solamente valores musicales validados.
+Las restricciones musicales se comprueban después del análisis sintáctico: el modo de escala, presets, exclusión kit/synth, parámetros, nombres únicos, longitudes de patrón, aridad y rangos de generadores. `scale_mode` acepta `free`, `suggest` o `strict`; el predeterminado es `suggest`. En ese modo, una nota ajena a la escala produce una advertencia sin bloquear la composición. El AST conserva ubicaciones de origen y la representación intermedia contiene solamente valores musicales validados.
 
 `parse(source)` devuelve `{ ast, diagnostics }`. `validate(ast, options)` devuelve `{ composition?, diagnostics }`. `compile(source, options)` aplica ambas etapas y el límite de tamaño. No devuelve una composición si hay errores. El parser recupera errores en límites de línea o llaves para señalar varios problemas sin bloquearse.
 
